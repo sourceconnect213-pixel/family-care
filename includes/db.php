@@ -49,6 +49,7 @@ function db_migrate(PDO $pdo): void
     $version = (int)$pdo->query("SELECT svalue FROM settings WHERE skey = 'schema_version'")->fetchColumn();
     if ($version < 1) db_migrate_v1($pdo, $auto, $text, $long, $engine);
     if ($version < 2) db_migrate_v2($pdo, $auto, $text, $long, $engine);
+    if ($version < 3) db_migrate_v3($pdo, $auto, $text, $long, $engine);
 }
 
 /** Version 1: core tables and sample data */
@@ -234,4 +235,97 @@ function db_seed(PDO $pdo): void
             $sst->execute([$id, $s[0], $s[1], $s[2], $s[3], max(5, $mins), 'Room ' . ($i + 1)]);
         }
     }
+}
+
+/** Version 3: website content (pages, news & health tips, general services, home page) */
+function db_migrate_v3(PDO $pdo, string $auto, string $text, string $long, string $engine): void
+{
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pages (
+        id $auto,
+        slug VARCHAR(60) NOT NULL UNIQUE,
+        title $text NOT NULL,
+        summary $long,
+        body $long,
+        image $text,
+        in_top_menu INT NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 0,
+        published INT NOT NULL DEFAULT 1,
+        updated_at $text NOT NULL
+    )$engine");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS posts (
+        id $auto,
+        title $text NOT NULL,
+        kind VARCHAR(10) NOT NULL DEFAULT 'tip',
+        summary $long,
+        body $long,
+        image $text,
+        youtube_url $text,
+        published_on VARCHAR(10) NOT NULL,
+        published INT NOT NULL DEFAULT 1
+    )$engine");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS services (
+        id $auto,
+        name $text NOT NULL,
+        description $long,
+        sort_order INT NOT NULL DEFAULT 0
+    )$engine");
+
+    $now = date('Y-m-d H:i:s');
+    $note = "\n\n(Sample text. Edit this page in Admin → Website pages.)";
+    $pages = [
+        ['about', 'About us', 'A family hospital in Kelaniya, with specialist channelling, a 24-hour pharmacy and laboratory under one roof.',
+            "Family Care Hospital looks after families in Kelaniya and the surrounding area. Specialist doctors channel here every day, and our nurses, pharmacists and laboratory staff work together so you can be seen, tested and treated in one visit.\n\nWe keep our waiting times short with numbered appointments you can book online, and we keep our charges clear: you see the doctor's fee and the hospital charge before you book.$note"],
+        ['laboratory', 'Laboratory', 'Blood tests, urine tests and more, with reports the same day for most tests.',
+            "Our laboratory runs routine and special tests, including full blood count, blood sugar, lipid profile, liver and kidney function, thyroid tests and urine analysis.\n\nMost reports are ready the same day. Ask at the counter about fasting before your test.$note"],
+        ['pharmacy', 'Pharmacy', 'A 24-hour pharmacy for prescriptions from our doctors and others.',
+            "Our pharmacy is open 24 hours. Bring your prescription from any doctor. Our pharmacists can explain how and when to take your medicines.$note"],
+        ['facilities', 'Facilities', 'Consultation rooms, emergency care, scanning, X-ray and parking.',
+            "Air-conditioned consultation rooms, an emergency treatment unit, X-ray and ultrasound scanning, ECG, a wound dressing room, a pharmacy and a laboratory, with parking for patients.$note"],
+        ['careers', 'Careers', 'Join our team of doctors, nurses and staff.',
+            "We are always glad to hear from caring doctors, nurses, pharmacists and support staff. Send your CV to the email address on our contact page.$note"],
+    ];
+    $st = $pdo->prepare('INSERT INTO pages (slug, title, summary, body, in_top_menu, sort_order, published, updated_at) VALUES (?,?,?,?,1,?,1,?)');
+    foreach ($pages as $i => $pg) $st->execute([$pg[0], $pg[1], $pg[2], $pg[3], $i, $now]);
+
+    $services = [
+        ['24-hour pharmacy', 'Prescriptions filled day and night.'],
+        ['Laboratory', 'Blood and urine tests, most reports the same day.'],
+        ['Emergency treatment unit', 'Open 24 hours for accidents and urgent illness.'],
+        ['X-ray', 'Digital X-ray with quick reports.'],
+        ['Ultrasound scanning', 'Abdominal, pregnancy and other scans.'],
+        ['ECG', 'Heart tracing, done on the spot.'],
+        ['Ambulance service', 'Call the emergency number for an ambulance.'],
+        ['Home sample collection', 'We collect blood samples at your home.'],
+        ['Vaccination', 'Child and adult vaccines.'],
+        ['Wound dressing', 'Dressings and minor procedures.'],
+        ['Health check packages', 'Full body, diabetes and heart checks.'],
+    ];
+    $st = $pdo->prepare('INSERT INTO services (name, description, sort_order) VALUES (?,?,?)');
+    foreach ($services as $i => $sv) $st->execute([$sv[0], $sv[1], $i]);
+
+    $posts = [
+        ['Dengue: when to see a doctor', 'Fever for two days or more during the rainy season? Get a blood test.', "If you have a fever for two days or more, with body aches, headache or vomiting, see a doctor and get a full blood count. Drink plenty of fluids, take only paracetamol for fever, and come back at once if you have bleeding, severe stomach pain or feel very weak.\n\n(Sample article. Edit or delete it in Admin → News & health tips.)", -3],
+        ['Know your numbers: blood sugar and blood pressure', 'A simple check once a year can catch problems early.', "Adults over 35 should check blood sugar and blood pressure at least once a year, and more often if diabetes or high blood pressure runs in the family. Both tests take a few minutes at our laboratory.\n\n(Sample article. Edit or delete it in Admin → News & health tips.)", -10],
+        ['Bringing your child for vaccines', 'What to bring and what to expect.', "Bring your child's health development record (CHDR) book. Mild fever after a vaccine is common; give paracetamol in the right dose and plenty of fluids.\n\n(Sample article. Edit or delete it in Admin → News & health tips.)", -20],
+    ];
+    $st = $pdo->prepare("INSERT INTO posts (title, kind, summary, body, published_on, published) VALUES (?, 'tip', ?, ?, ?, 1)");
+    foreach ($posts as $po) $st->execute([$po[0], $po[1], $po[2], date('Y-m-d', strtotime("$po[3] days"))]);
+
+    $st = $pdo->prepare('INSERT INTO settings (skey, svalue) VALUES (?, ?)');
+    foreach ([
+        'hero_title'   => 'Care for the whole family, close to home',
+        'hero_text'    => 'Channel specialist doctors in Kelaniya. Book your number online and come in at your time.',
+        'hero_image'   => '',
+        'about_image'  => '',
+        'lab_phone'    => '',
+        'whatsapp'     => '',
+        'stat1_value'  => '15+',  'stat1_label' => 'Years caring for Kelaniya',
+        'stat2_value'  => '{doctors}', 'stat2_label' => 'Specialist doctors',
+        'stat3_value'  => '24/7', 'stat3_label' => 'Emergency care and pharmacy',
+        'stat4_value'  => '{specialties}', 'stat4_label' => 'Specialties',
+    ] as $k => $v) $st->execute([$k, $v]);
+
+    $pdo->exec("UPDATE settings SET svalue = '3' WHERE skey = 'schema_version'");
 }

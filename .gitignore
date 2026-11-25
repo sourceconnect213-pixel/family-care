@@ -4,3 +4,5 @@ uploads/doctors/*
 !uploads/doctors/.gitkeep
 .DS_Store
 _site/
+uploads/site/*
+!uploads/site/.gitkeep

@@ -143,3 +143,8 @@ a.tile:hover { border-color: var(--navy); }
 .day-pill.is-leave strong { color: var(--red-dark); }
 .narrow-panel { max-width: 480px; }
 .secret-note { font-weight: 400; color: var(--muted); font-size: .85rem; }
+
+/* Website content */
+.thumb { width: 120px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
+textarea.tall { min-height: 260px; line-height: 1.55; }
+.help { font-weight: 400; color: var(--muted); font-size: .85rem; }

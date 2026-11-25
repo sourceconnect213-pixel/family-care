@@ -99,6 +99,14 @@ function map_url(string $path): ?string
         'book.php'               => 'book-preview.html',
         'booking.php'            => 'booking-preview.html',
         'check.php'              => 'check.html',
+        'services.php'           => 'services.html',
+        'news.php'               => 'news.html',
+        'post.php'               => 'post-' . (int)($q['id'] ?? 0) . '.html',
+        'page.php'               => 'page-' . preg_replace('/[^a-z0-9-]/', '', (string)($q['slug'] ?? '')) . '.html',
+        'admin/content.php'      => 'admin/content.html',
+        'admin/services.php'     => 'admin/services.html',
+        'admin/pages.php'        => isset($q['id']) ? 'admin/page-' . (int)$q['id'] . '.html' : (isset($q['new']) ? 'admin/page-new.html' : 'admin/pages.html'),
+        'admin/posts.php'        => isset($q['id']) ? 'admin/post-' . (int)$q['id'] . '.html' : (isset($q['new']) ? 'admin/post-new.html' : 'admin/posts.html'),
         'admin/'                 => 'admin/index.html',
         'admin/index.php'        => 'admin/index.html',
         'admin/login.php'        => 'admin/login.html',
@@ -199,6 +207,10 @@ foreach ($specIds as $s) {
     save_page(fetch("timetable.php?specialty=$s"), "timetable-$s.html");
 }
 foreach ($docIds as $id) save_page(fetch("doctor.php?id=$id"), "doctor-$id.html");
+foreach (['services.php', 'news.php'] as $p) save_page(fetch($p), map_url($p));
+foreach (pages() as $pg) save_page(fetch('page.php?slug=' . urlencode($pg['slug'])), map_url('page.php?slug=' . $pg['slug']));
+$postIds = array_map(fn($p) => (int)$p['id'], posts());
+foreach ($postIds as $id) save_page(fetch("post.php?id=$id"), "post-$id.html");
 
 // Sample booking page + confirmation (doctor B)
 $patientJar = "$tmp/patient.txt";
@@ -220,6 +232,11 @@ fetch('admin/login.php', $adminJar, ['csrf' => csrf_from($login), 'username' => 
 foreach (['index', 'appointments', 'doctors', 'leaves', 'specialties', 'settings', 'account'] as $p) save_page(fetch("admin/$p.php", $adminJar), "admin/$p.html");
 foreach ($docIds as $id) save_page(fetch("admin/doctor_edit.php?id=$id", $adminJar), "admin/doctor-$id.html");
 save_page(fetch('admin/doctor_edit.php', $adminJar), 'admin/doctor-new.html');
+foreach (['content', 'services', 'pages', 'posts'] as $p) save_page(fetch("admin/$p.php", $adminJar), "admin/$p.html");
+foreach (db()->query('SELECT id FROM pages')->fetchAll(PDO::FETCH_COLUMN) as $id) save_page(fetch("admin/pages.php?id=$id", $adminJar), "admin/page-$id.html");
+foreach (db()->query('SELECT id FROM posts')->fetchAll(PDO::FETCH_COLUMN) as $id) save_page(fetch("admin/posts.php?id=$id", $adminJar), "admin/post-$id.html");
+save_page(fetch('admin/pages.php?new=1', $adminJar), 'admin/page-new.html');
+save_page(fetch('admin/posts.php?new=1', $adminJar), 'admin/post-new.html');
 save_page(fetch('admin/print.php?date=' . date('Y-m-d', strtotime('+1 day')), $adminJar), 'admin/print.html');
 
 // Doctor portal (doctor B)
