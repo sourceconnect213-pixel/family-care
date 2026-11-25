@@ -127,3 +127,19 @@ a.tile:hover { border-color: var(--navy); }
 .login { width: 100%; max-width: 400px; background: #fff; border: 1px solid var(--line); border-top: 6px solid var(--red); border-radius: var(--r); padding: 32px; text-align: left; }
 .login img { margin-bottom: 14px; }
 .login h1 { font-size: 1.5rem; margin-bottom: .2em; }
+
+/* Doctor portal */
+.alert--new { background: #FFF5F5; border-color: var(--red); color: var(--ink); }
+.alert--new a { font-weight: 600; }
+.badge--new { background: var(--red); color: #fff; margin-left: 6px; font-size: .75rem; }
+.day-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+.day-pill { flex: none; display: grid; gap: 2px; min-width: 104px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--ink); background: #fff; }
+.day-pill span { font-size: .85rem; color: var(--muted); }
+.day-pill strong { font-family: var(--font-head); font-size: 1.15rem; color: var(--navy); font-weight: 600; }
+.day-pill small { color: var(--muted); }
+.day-pill:hover { border-color: var(--navy); }
+.day-pill.is-active { background: var(--navy); border-color: var(--navy); }
+.day-pill.is-active span, .day-pill.is-active strong, .day-pill.is-active small { color: #fff; }
+.day-pill.is-leave strong { color: var(--red-dark); }
+.narrow-panel { max-width: 480px; }
+.secret-note { font-weight: 400; color: var(--muted); font-size: .85rem; }

@@ -394,7 +394,9 @@ function book_appointment(int $scheduleId, string $date, array $patient, string 
             $patient['notes'] ?: null, 'booked', $source, client_ip(), date('Y-m-d H:i:s'),
         ]);
         $pdo->exec('COMMIT');
-        return ['ok' => true, 'appointment' => get_appointment_by_ref($ref)];
+        $appt = get_appointment_by_ref($ref);
+        after_response(fn() => notify_booking($appt));
+        return ['ok' => true, 'appointment' => $appt];
     } catch (Throwable $ex) {
         try { $pdo->exec('ROLLBACK'); } catch (Throwable $ignored) {}
         error_log('Booking failed: ' . $ex->getMessage());
@@ -427,4 +429,73 @@ function validate_patient(array $in): array
     if (!valid_nic($p['nic'])) $errors['nic'] = 'Enter an NIC like 199012345678 or 901234567V, or leave it empty.';
     if ($p['age'] !== '' && (!ctype_digit($p['age']) || (int)$p['age'] > 120)) $errors['age'] = 'Enter age in years (0–120).';
     return [$p, $errors];
+}
+
+/** Run work (like sending SMS) after the page has been sent to the browser */
+function after_response(callable $fn): void
+{
+    register_shutdown_function(function () use ($fn) {
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        try { $fn(); } catch (Throwable $e) { error_log('Background task failed: ' . $e->getMessage()); }
+    });
+}
+
+/** Cancel an appointment and tell the patient and the hospital */
+function cancel_appointment(array $a, string $by): void
+{
+    db()->prepare("UPDATE appointments SET status = 'cancelled' WHERE id = ?")->execute([$a['id']]);
+    after_response(fn() => notify_cancellation($a, $by));
+}
+
+require_once __DIR__ . '/sms.php';
+
+/* ---------- doctor login ---------- */
+
+function current_doctor(): ?array
+{
+    if (empty($_SESSION['doctor_id'])) return null;
+    $doc = get_doctor((int)$_SESSION['doctor_id'], false);
+    return $doc && $doc['login_enabled'] ? $doc : null;
+}
+
+function require_doctor(): array
+{
+    $d = current_doctor();
+    if (!$d || time() - ($_SESSION['doctor_seen'] ?? 0) > 7200) {
+        unset($_SESSION['doctor_id']);
+        if ($d) flash('info', 'You were signed out after 2 hours of inactivity.');
+        redirect('login.php');
+    }
+    $_SESSION['doctor_seen'] = time();
+    return $d;
+}
+
+/** 5 failed sign-ins per IP per 15 minutes, shared by staff and doctor logins */
+function login_blocked(): bool
+{
+    db()->prepare('DELETE FROM login_attempts WHERE attempted_at < ?')->execute([time() - 900]);
+    $st = db()->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = ?');
+    $st->execute([client_ip()]);
+    return (int)$st->fetchColumn() >= 5;
+}
+
+function login_failed(): void
+{
+    db()->prepare('INSERT INTO login_attempts (ip, attempted_at) VALUES (?, ?)')->execute([client_ip(), time()]);
+    usleep(400000);
+}
+
+function login_succeeded(): void
+{
+    db()->prepare('DELETE FROM login_attempts WHERE ip = ?')->execute([client_ip()]);
+    session_regenerate_id(true);
+}
+
+/** Full address of the doctor portal, for telling doctors where to sign in */
+function portal_url(): string
+{
+    $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    $host = $_SERVER['HTTP_HOST'] ?? 'your-website';
+    $root = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/admin/x.php'))), '/');
+    return ($https ? 'https://' : 'http://') . $host . $root . '/portal/';
 }

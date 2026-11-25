@@ -46,8 +46,14 @@ function db_migrate(PDO $pdo): void
         svalue $long
     )$engine");
 
-    $exists = $pdo->query("SELECT svalue FROM settings WHERE skey = 'schema_version'")->fetchColumn();
-    if ($exists) return;
+    $version = (int)$pdo->query("SELECT svalue FROM settings WHERE skey = 'schema_version'")->fetchColumn();
+    if ($version < 1) db_migrate_v1($pdo, $auto, $text, $long, $engine);
+    if ($version < 2) db_migrate_v2($pdo, $auto, $text, $long, $engine);
+}
+
+/** Version 1: core tables and sample data */
+function db_migrate_v1(PDO $pdo, string $auto, string $text, string $long, string $engine): void
+{
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS admins (
         id $auto,
@@ -137,6 +143,41 @@ function db_migrate(PDO $pdo): void
     db_seed($pdo);
 
     $pdo->prepare("INSERT INTO settings (skey, svalue) VALUES ('schema_version', '1')")->execute();
+}
+
+/** Version 2: doctor logins, SMS notifications */
+function db_migrate_v2(PDO $pdo, string $auto, string $text, string $long, string $engine): void
+{
+    $pdo->exec('ALTER TABLE doctors ADD COLUMN username VARCHAR(64)');
+    $pdo->exec("ALTER TABLE doctors ADD COLUMN password_hash $text");
+    $pdo->exec('ALTER TABLE doctors ADD COLUMN login_enabled INT NOT NULL DEFAULT 0');
+    $pdo->exec('CREATE UNIQUE INDEX idx_doctor_username ON doctors (username)');
+    // lets the doctor's page highlight bookings they haven't seen yet
+    $pdo->exec('ALTER TABLE appointments ADD COLUMN seen_by_doctor INT NOT NULL DEFAULT 0');
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sms_log (
+        id $auto,
+        appointment_id INT,
+        recipient VARCHAR(20) NOT NULL,
+        kind VARCHAR(20) NOT NULL,
+        message $long NOT NULL,
+        status VARCHAR(12) NOT NULL,
+        response $long,
+        created_at $text NOT NULL
+    )$engine");
+
+    $st = $pdo->prepare('INSERT INTO settings (skey, svalue) VALUES (?, ?)');
+    foreach ([
+        'sms_provider'        => 'off',   // off | notify_lk | text_lk
+        'sms_user_id'         => '',
+        'sms_api_key'         => '',
+        'sms_sender_id'       => '',
+        'official_number'     => '',
+        'sms_to_patient'      => '1',
+        'sms_to_official'     => '1',
+    ] as $k => $v) $st->execute([$k, $v]);
+
+    $pdo->exec("UPDATE settings SET svalue = '2' WHERE skey = 'schema_version'");
 }
 
 function db_seed(PDO $pdo): void

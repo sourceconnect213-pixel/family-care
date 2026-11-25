@@ -12,9 +12,17 @@ if (is_post()) {
 
     if ($action === 'status') {
         $status = (string)($_POST['status'] ?? '');
-        if (isset(STATUSES[$status])) {
-            $pdo->prepare('UPDATE appointments SET status = ? WHERE id = ?')->execute([$status, (int)$_POST['id']]);
-            flash('success', 'Status changed to ' . STATUSES[$status] . '.');
+        $st = $pdo->prepare('SELECT ref FROM appointments WHERE id = ?');
+        $st->execute([(int)$_POST['id']]);
+        $current = ($ref = $st->fetchColumn()) ? get_appointment_by_ref($ref) : null;
+        if ($current && isset(STATUSES[$status]) && $current['status'] !== $status) {
+            if ($status === 'cancelled') {
+                cancel_appointment($current, 'hospital');
+                flash('success', 'Booking cancelled.' . (setting('sms_provider') !== 'off' ? ' The patient will get an SMS.' : ''));
+            } else {
+                $pdo->prepare('UPDATE appointments SET status = ? WHERE id = ?')->execute([$status, $current['id']]);
+                flash('success', 'Status changed to ' . STATUSES[$status] . '.');
+            }
         }
     } elseif ($action === 'walkin') {
         [$p, $errors] = validate_patient($_POST);

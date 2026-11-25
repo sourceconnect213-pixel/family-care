@@ -11,6 +11,7 @@ function admin_header(string $title, string $active = ''): void
         'leaves'       => ['leaves.php', 'Doctor leave'],
         'specialties'  => ['specialties.php', 'Specialties'],
         'settings'     => ['settings.php', 'Hospital settings'],
+        'sms'          => ['sms.php', 'SMS messages'],
         'account'      => ['account.php', 'Staff accounts'],
     ];
     ?><!DOCTYPE html>
@@ -24,7 +25,7 @@ function admin_header(string $title, string $active = ''): void
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/admin.css?v=1">
+<link rel="stylesheet" href="../assets/css/admin.css?v=2">
 </head>
 <body class="admin">
 <?php if ($admin): ?>

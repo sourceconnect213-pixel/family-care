@@ -25,7 +25,7 @@ if (is_post()) {
                 } elseif ($starts <= time()) {
                     $error = 'This session has already started. Call ' . setting('phone') . ' for help.';
                 } else {
-                    db()->prepare("UPDATE appointments SET status = 'cancelled' WHERE id = ?")->execute([$a['id']]);
+                    cancel_appointment($a, 'patient');
                     flash('success', 'Booking ' . $a['ref'] . ' is cancelled.');
                     $a = get_appointment_by_ref($a['ref']);
                 }

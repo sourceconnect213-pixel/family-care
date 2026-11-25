@@ -93,6 +93,24 @@ if (is_post()) {
         redirect('doctor_edit.php?id=' . $id . '#sessions');
     }
 
+    if ($doc && $action === 'login') {
+        $username = strtolower(trim((string)($_POST['username'] ?? '')));
+        $pass = (string)($_POST['password'] ?? '');
+        $enabled = empty($_POST['login_enabled']) ? 0 : 1;
+        $taken = $pdo->prepare('SELECT 1 FROM doctors WHERE username = ? AND id <> ?');
+        $taken->execute([$username, $id]);
+        if (!preg_match('/^[a-z0-9._-]{3,30}$/', $username)) flash('error', 'Username: 3–30 letters, numbers, dots or dashes.');
+        elseif ($taken->fetchColumn()) flash('error', 'Another doctor already uses that username.');
+        elseif ($pass !== '' && strlen($pass) < 8) flash('error', 'Password must be at least 8 characters.');
+        elseif ($enabled && $pass === '' && empty($doc['password_hash'])) flash('error', 'Set a password to turn on this doctor\'s login.');
+        else {
+            $pdo->prepare('UPDATE doctors SET username = ?, login_enabled = ? WHERE id = ?')->execute([$username, $enabled, $id]);
+            if ($pass !== '') $pdo->prepare('UPDATE doctors SET password_hash = ? WHERE id = ?')->execute([password_hash($pass, PASSWORD_DEFAULT), $id]);
+            flash('success', $enabled ? 'Doctor login saved. Give the username and password to the doctor in person.' : 'Doctor login turned off.');
+        }
+        redirect('doctor_edit.php?id=' . $id . '#login');
+    }
+
     if ($doc && $action === 'delete_session') {
         $sid = (int)$_POST['schedule_id'];
         $st = $pdo->prepare("SELECT COUNT(*) FROM appointments WHERE schedule_id = ? AND appt_date >= ? AND status <> 'cancelled'");
@@ -200,6 +218,21 @@ admin_header($doc ? 'Edit ' . $doc['name'] : 'Add a doctor', 'doctors');
     <label>Minutes per patient <input type="number" name="minutes_per_patient" value="10" min="1" max="120" required></label>
     <label class="span-2">Room (optional) <input name="room" placeholder="Room 3, ground floor"></label>
     <div class="span-4"><button class="btn btn--red" type="submit">Add session</button></div>
+  </form>
+</section>
+
+<section class="panel" id="login">
+  <h2>Doctor login</h2>
+  <p class="muted">The doctor signs in at <a href="../portal/login.php" target="_blank" rel="noopener"><?= e(portal_url()) ?></a> to see the patients who have channelled them. They can't see other doctors' patients.</p>
+  <form method="post" class="grid-form">
+    <?= csrf_field() ?>
+    <input type="hidden" name="id" value="<?= $id ?>">
+    <input type="hidden" name="action" value="login">
+    <label>Username <input name="username" value="<?= e($doc['username'] ?? '') ?>" required autocomplete="off" placeholder="dr.perera"></label>
+    <label><?= empty($doc['password_hash']) ? 'Password' : 'New password' ?> <span class="secret-note"><?= empty($doc['password_hash']) ? '(at least 8 characters)' : '(leave empty to keep the current one)' ?></span>
+      <input type="password" name="password" minlength="8" autocomplete="new-password"></label>
+    <label class="check span-2"><input type="checkbox" name="login_enabled" value="1"<?= !empty($doc['login_enabled']) ? ' checked' : '' ?>> Allow this doctor to sign in</label>
+    <div class="span-4"><button class="btn btn--navy" type="submit">Save login</button></div>
   </form>
 </section>
 <?php endif; ?>

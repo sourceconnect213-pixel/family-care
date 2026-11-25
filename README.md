@@ -17,6 +17,14 @@ Staff use an **admin panel** at `/admin` to:
 - mark a doctor on leave for a date range, for all sessions or one session; online booking closes for those dates
 - edit specialties, hospital details (phone, address, opening hours, hospital charge, booking window) and staff accounts
 
+Each **doctor gets their own login** at `/portal`. There they see only their own patients: new bookings are highlighted, with a 14-day overview, each session's patient list (number, estimated time, age, phone, note) and their timetable and leave. They can mark patients Arrived, Completed or No show, and change their password. The admin sets up each doctor's username and password on the doctor's page in the admin panel.
+
+**SMS messages** (Admin → SMS messages), sent through a Sri Lankan SMS gateway (Notify.lk or Text.lk) under the hospital's sender ID:
+
+- the patient gets a confirmation (number, estimated time, reference) and a message if the booking is cancelled
+- the hospital's official number gets an alert every time a doctor is channelled or a booking is cancelled; doctors' personal numbers are never used
+- every message is logged with whether it was sent, and there is a "Send a test SMS" button
+
 Colours come from the logo: navy blue `#0B2265` and red `#E30613`.
 
 ## Requirements
@@ -32,7 +40,8 @@ No database server is needed: data is stored in `data/family_care.sqlite`, creat
 2. Make sure `data/` and `uploads/doctors/` are writable by PHP (permissions 755 or 775).
 3. Open `https://your-domain/admin/` and create the first admin account. That setup page only works once.
 4. In **Hospital settings**, replace the placeholder phone numbers, email, address and Google Maps link.
-5. In **Doctors & sessions**, replace the six sample doctors with the real doctors and their sessions. Delete or hide the samples.
+5. In **SMS messages**, choose the provider, enter the API details and sender ID from your SMS account, and the hospital's official number. Press "Send a test SMS".
+6. In **Doctors & sessions**, replace the six sample doctors with the real doctors and their sessions. Delete or hide the samples.
 
 ## Run it on your computer
 
@@ -40,7 +49,7 @@ No database server is needed: data is stored in `data/family_care.sqlite`, creat
 php -S localhost:8080
 ```
 
-Then open http://localhost:8080 and http://localhost:8080/admin.
+Then open http://localhost:8080, http://localhost:8080/admin and http://localhost:8080/portal.
 
 ## How appointment numbers work
 
@@ -50,7 +59,9 @@ Online booking closes 30 minutes before a session starts (change this in setting
 
 ## Security
 
-- Admin passwords are hashed; sign-in is limited to 5 failed tries per IP address per 15 minutes; sessions time out after 2 hours idle.
+- Doctors can only see and update their own patients, and can't open the admin panel.
+- The SMS API key is never shown again after it is saved.
+- Admin and doctor passwords are hashed; sign-in is limited to 5 failed tries per IP address per 15 minutes; sessions time out after 2 hours idle.
 - Every form is protected against cross-site request forgery.
 - All database queries use prepared statements, and all output is escaped.
 - Uploaded photos are checked as real images and renamed; scripts can't run from the uploads folder.
@@ -63,6 +74,7 @@ Online booking closes 30 minutes before a session starts (change this in setting
 index.php, doctors.php, doctor.php, timetable.php   public pages
 book.php, booking.php, check.php                    booking, confirmation, check/cancel
 admin/                                              admin panel
+portal/                                             doctor login area
 includes/                                           config, database, shared functions and templates
 assets/                                             CSS, JS, logo
 data/                                               SQLite database (not in git)

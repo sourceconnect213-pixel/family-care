@@ -5,29 +5,22 @@ if (admin_count() === 0) redirect('setup.php');
 if (current_admin()) redirect('index.php');
 
 $error = '';
-// Throttle by IP address: 5 failed tries per 15 minutes
-db()->prepare('DELETE FROM login_attempts WHERE attempted_at < ?')->execute([time() - 900]);
-$fails = db()->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = ?');
-$fails->execute([client_ip()]);
-$failCount = (int)$fails->fetchColumn();
 
 if (is_post()) {
     verify_csrf();
-    if ($failCount >= 5) {
+    if (login_blocked()) {
         $error = 'Too many failed attempts. Wait 15 minutes and try again.';
     } else {
         $st = db()->prepare('SELECT * FROM admins WHERE username = ?');
         $st->execute([strtolower(trim((string)($_POST['username'] ?? '')))]);
         $admin = $st->fetch();
         if ($admin && password_verify((string)($_POST['password'] ?? ''), $admin['password_hash'])) {
-            session_regenerate_id(true);
+            login_succeeded();
             $_SESSION['admin_id'] = (int)$admin['id'];
             $_SESSION['admin_seen'] = time();
-            db()->prepare('DELETE FROM login_attempts WHERE ip = ?')->execute([client_ip()]);
             redirect('index.php');
         }
-        db()->prepare('INSERT INTO login_attempts (ip, attempted_at) VALUES (?, ?)')->execute([client_ip(), time()]);
-        usleep(400000);
+        login_failed();
         $error = 'Wrong username or password.';
     }
 }

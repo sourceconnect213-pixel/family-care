@@ -32,7 +32,7 @@ admin_header('Doctors & sessions', 'doctors');
     <p class="muted">No doctors yet. Add your first doctor to start taking bookings.</p>
   <?php else: ?>
   <table class="table">
-    <thead><tr><th></th><th>Doctor</th><th>Weekly sessions</th><th>Fee</th><th>On website</th><th></th></tr></thead>
+    <thead><tr><th></th><th>Doctor</th><th>Weekly sessions</th><th>Fee</th><th>On website</th><th>Doctor login</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($list as $d): $sch = doctor_schedules((int)$d['id'], false); ?>
       <tr class="<?= $d['active'] ? '' : 'is-muted' ?>">
@@ -46,6 +46,7 @@ admin_header('Doctors & sessions', 'doctors');
         </td>
         <td class="nowrap"><?= e(money($d['fee'])) ?></td>
         <td><?= $d['active'] ? 'Shown' : 'Hidden' ?></td>
+        <td><?= $d['login_enabled'] ? e($d['username']) : '<span class="muted">Not set</span>' ?></td>
         <td class="nowrap">
           <a class="btn btn--ghost btn--small" href="doctor_edit.php?id=<?= (int)$d['id'] ?>">Edit</a>
           <form method="post" class="inline">
