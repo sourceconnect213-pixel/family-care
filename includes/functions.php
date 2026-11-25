@@ -499,3 +499,97 @@ function portal_url(): string
     $root = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/admin/x.php'))), '/');
     return ($https ? 'https://' : 'http://') . $host . $root . '/portal/';
 }
+
+/* ---------- website content ---------- */
+
+const SITE_UPLOAD_DIR = __DIR__ . '/../uploads/site';
+const SITE_UPLOAD_URL = 'uploads/site';
+
+/**
+ * Save an uploaded photo (JPG, PNG or WebP, up to 5 MB) under uploads/site.
+ * @return array [filename|null, error|null]
+ */
+function save_site_image(array $f, ?string $replace = null): array
+{
+    if (($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return [$replace, null];
+    $info = $f['error'] === UPLOAD_ERR_OK ? @getimagesize($f['tmp_name']) : false;
+    $ext = $info ? ([IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$info[2]] ?? null) : null;
+    if (!$ext) return [$replace, 'Photo must be a JPG, PNG or WebP image.'];
+    if ($f['size'] > 5 * 1024 * 1024) return [$replace, 'Photo must be smaller than 5 MB.'];
+    if (!is_dir(SITE_UPLOAD_DIR)) mkdir(SITE_UPLOAD_DIR, 0775, true);
+    $name = bin2hex(random_bytes(10)) . '.' . $ext;
+    if (!move_uploaded_file($f['tmp_name'], SITE_UPLOAD_DIR . '/' . $name)) return [$replace, 'Couldn\'t save the photo. Check that the uploads folder is writable.'];
+    if ($replace) delete_site_image($replace);
+    return [$name, null];
+}
+
+function delete_site_image(?string $name): void
+{
+    if ($name && preg_match('/^[a-f0-9]{20}\.(jpg|png|webp)$/', $name)) @unlink(SITE_UPLOAD_DIR . '/' . $name);
+}
+
+function site_image_url(?string $name): ?string
+{
+    return $name && is_file(SITE_UPLOAD_DIR . '/' . $name) ? base_url(SITE_UPLOAD_URL . '/' . $name) : null;
+}
+
+function pages(bool $menuOnly = false): array
+{
+    return db()->query('SELECT * FROM pages WHERE published = 1' . ($menuOnly ? ' AND in_top_menu = 1' : '') . ' ORDER BY sort_order, title')->fetchAll();
+}
+
+function get_page(string $slug): ?array
+{
+    $st = db()->prepare('SELECT * FROM pages WHERE slug = ? AND published = 1');
+    $st->execute([$slug]);
+    return $st->fetch() ?: null;
+}
+
+function services(): array
+{
+    return db()->query('SELECT * FROM services ORDER BY sort_order, name')->fetchAll();
+}
+
+function posts(int $limit = 0): array
+{
+    $sql = "SELECT * FROM posts WHERE published = 1 AND published_on <= '" . date('Y-m-d') . "' ORDER BY published_on DESC, id DESC";
+    if ($limit) $sql .= ' LIMIT ' . (int)$limit;
+    return db()->query($sql)->fetchAll();
+}
+
+/** YouTube video id from a normal, short or embed link */
+function youtube_id(?string $url): ?string
+{
+    return $url && preg_match('~(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})~', $url, $m) ? $m[1] : null;
+}
+
+/** Text with blank-line paragraphs → safe HTML paragraphs */
+function paragraphs(?string $text): string
+{
+    $out = '';
+    foreach (preg_split('/\n\s*\n/', trim((string)$text)) as $p) if ($p !== '') $out .= '<p>' . nl2br(e(trim($p))) . "</p>\n";
+    return $out;
+}
+
+/** Group names A–Z: ['A' => [...], 'B' => [...]] */
+function group_by_letter(array $items, string $key = 'name'): array
+{
+    $g = [];
+    foreach ($items as $it) $g[mb_strtoupper(mb_substr($it[$key], 0, 1))][] = $it;
+    ksort($g);
+    return $g;
+}
+
+/** A home page number; {doctors} and {specialties} count themselves */
+function stat_value(string $n): string
+{
+    return strtr(setting("stat{$n}_value"), [
+        '{doctors}'     => (string)count(doctors()),
+        '{specialties}' => (string)count(specialties()),
+    ]);
+}
+
+function tel(string $phone): string
+{
+    return 'tel:' . preg_replace('/[^\d+]/', '', $phone);
+}

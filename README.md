@@ -17,6 +17,8 @@ Staff use an **admin panel** at `/admin` to:
 - mark a doctor on leave for a date range, for all sessions or one session; online booking closes for those dates
 - edit specialties, hospital details (phone, address, opening hours, hospital charge, booking window) and staff accounts
 
+The **public website** has a two-row header with large "Channel your doctor" and call buttons, a home page with a photo hero and the live channelling board, an A–Z services panel (medical and general services), a numbers strip, an About section, feature cards (Laboratory, Pharmacy), health tips and news with YouTube videos, a hotline band in the footer, and floating Emergency and Channelling buttons. All of it is edited in the admin panel under **Website**: home page text, photos and numbers; pages (About us, Laboratory, Pharmacy, Facilities, Careers, or new ones); health tips and news; and general services.
+
 Each **doctor gets their own login** at `/portal`. There they see only their own patients: new bookings are highlighted, with a 14-day overview, each session's patient list (number, estimated time, age, phone, note) and their timetable and leave. They can mark patients Arrived, Completed or No show, and change their password. The admin sets up each doctor's username and password on the doctor's page in the admin panel.
 
 **SMS messages** (Admin → SMS messages), sent through a Sri Lankan SMS gateway (Notify.lk or Text.lk) under the hospital's sender ID:
@@ -80,6 +82,7 @@ Online booking closes 30 minutes before a session starts (change this in setting
 
 ```
 index.php, doctors.php, doctor.php, timetable.php   public pages
+services.php, page.php, news.php, post.php          services, information pages, health tips
 book.php, booking.php, check.php                    booking, confirmation, check/cancel
 admin/                                              admin panel
 portal/                                             doctor login area
@@ -87,9 +90,9 @@ tools/build-preview.php                             builds the github.io preview
 includes/                                           config, database, shared functions and templates
 assets/                                             CSS, JS, logo
 data/                                               SQLite database (not in git)
-uploads/doctors/                                    doctor photos (not in git)
+uploads/doctors/, uploads/site/                     doctor and website photos (not in git)
 ```
 
 ## Back-ups
 
-Download `data/family_care.sqlite` and the `uploads/doctors/` folder regularly. That is the whole database.
+Download `data/family_care.sqlite` and the `uploads/` folder regularly. That is the whole database.
