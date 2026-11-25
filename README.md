@@ -51,6 +51,14 @@ php -S localhost:8080
 
 Then open http://localhost:8080, http://localhost:8080/admin and http://localhost:8080/portal.
 
+## Online preview (github.io)
+
+`tools/build-preview.php` builds a read-only copy of the whole site (public pages, admin panel and doctor portal) with sample data, as plain HTML. Nothing typed into the preview is saved. The GitHub Actions workflow `.github/workflows/preview.yml` publishes it to GitHub Pages on every push and once a day.
+
+One-time setup: on GitHub open the repository's **Settings → Pages**, and under "Build and deployment" set **Source** to **GitHub Actions**. On a free GitHub account the repository must be public for Pages to work. The preview address will be `https://<github-username>.github.io/<repository-name>/`.
+
+To build it yourself: `php tools/build-preview.php _site`, then open `_site/index.html`.
+
 ## How appointment numbers work
 
 Each weekly session has a maximum number of patients and minutes per patient. Patients get the next number in order. The estimated time is the session start plus `(number − 1) × minutes per patient`. Bookings are locked while a number is being given out, so two patients can never get the same number, and a session never goes over its maximum. Cancelled numbers are not reused, so numbers on printed lists stay stable.
@@ -75,6 +83,7 @@ index.php, doctors.php, doctor.php, timetable.php   public pages
 book.php, booking.php, check.php                    booking, confirmation, check/cancel
 admin/                                              admin panel
 portal/                                             doctor login area
+tools/build-preview.php                             builds the github.io preview
 includes/                                           config, database, shared functions and templates
 assets/                                             CSS, JS, logo
 data/                                               SQLite database (not in git)

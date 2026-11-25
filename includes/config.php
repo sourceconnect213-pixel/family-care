@@ -9,7 +9,7 @@ date_default_timezone_set('Asia/Colombo');
 
 // Database: 'sqlite' needs no setup. Switch to 'mysql' and fill the details if preferred.
 define('DB_DRIVER', getenv('FC_DB_DRIVER') ?: 'sqlite');
-define('DB_SQLITE_PATH', __DIR__ . '/../data/family_care.sqlite');
+define('DB_SQLITE_PATH', getenv('FC_DB_PATH') ?: __DIR__ . '/../data/family_care.sqlite');
 define('DB_HOST', getenv('FC_DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('FC_DB_NAME') ?: 'family_care');
 define('DB_USER', getenv('FC_DB_USER') ?: 'root');

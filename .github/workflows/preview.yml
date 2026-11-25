@@ -1,0 +1,46 @@
+# Publishes a read-only preview of the website to GitHub Pages (github.io).
+# Rebuilt on every push and once a day, so the dates and "today" board stay current.
+# One-time setup: repository Settings → Pages → Source: "GitHub Actions".
+name: Publish preview
+
+on:
+  push:
+    branches: [main, claude/adoring-newton-cvee8p]
+  schedule:
+    - cron: '41 0 * * *'   # 6.11 am Sri Lanka time, daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, gd, curl, mbstring
+          coverage: none
+      - name: Build preview pages
+        run: php tools/build-preview.php _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
