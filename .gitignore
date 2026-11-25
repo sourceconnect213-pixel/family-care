@@ -1,0 +1,5 @@
+data/*.sqlite
+data/*.sqlite-*
+uploads/doctors/*
+!uploads/doctors/.gitkeep
+.DS_Store
